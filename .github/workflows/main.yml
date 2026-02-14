@@ -1,0 +1,59 @@
+name: RDP Skyro Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  secure-rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360 # Hard limit for GitHub Runners is 6 hours
+
+    steps:
+      - name: Configure Core RDP Settings
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0 -Force
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1 -Force
+          netsh advfirewall firewall add rule name="RDP-Tailscale" dir=in action=allow protocol=TCP localport=3389
+          Restart-Service -Name TermService -Force
+
+      - name: Create RDP User with Secure Password
+        run: |
+          $charSet = @{ Upper = [char[]](65..90); Lower = [char[]](97..122); Number = [char[]](48..57) }
+          $password = -join (($charSet.Upper | Get-Random -Count 6) + ($charSet.Lower | Get-Random -Count 6) + ($charSet.Number | Get-Random -Count 4) | Sort-Object { Get-Random })
+          $securePass = ConvertTo-SecureString $password -AsPlainText -Force
+          New-LocalUser -Name "Skyro" -Password $securePass -AccountNeverExpires
+          Add-LocalGroupMember -Group "Administrators" -Member "Skyro"
+          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "Skyro"
+          # Masking the password in logs
+          echo "::add-mask::$password"
+          echo "RDP_PASS=$password" >> $env:GITHUB_ENV
+
+      - name: Install Tailscale
+        run: |
+          $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
+          Invoke-WebRequest -Uri $tsUrl -OutFile "tailscale.msi"
+          Start-Process msiexec.exe -ArgumentList "/i", "tailscale.msi", "/quiet", "/norestart" -Wait
+          Start-Sleep -Seconds 15
+
+      - name: Establish Tailscale Connection
+        run: |
+          $authKey = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          $hostName = "skyro-rdp-${{ github.run_id }}"
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=$authKey --hostname=$hostName
+          
+          $tsIP = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+          echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
+
+      - name: Maintain Connection (6 Hours)
+        run: |
+          Write-Host "==============================="
+          Write-Host "IP ADDRESS : $env:TAILSCALE_IP"
+          Write-Host "USERNAME   : Skyro"
+          Write-Host "PASSWORD   : $env:RDP_PASS" 
+          Write-Host "==============================="
+          
+          $endTime = (Get-Date).AddMinutes(350) # 10 mins buffer before runner kills itself
+          while ((Get-Date) -lt $endTime) {
+              Write-Host "[$(Get-Date)] Session Active..."
+              Start-Sleep -Seconds 300
+          }
