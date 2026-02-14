@@ -19,14 +19,14 @@ jobs:
       - name: Create RDP User with Secure Password
         run: |
           $charSet = @{ Upper = [char[]](65..90); Lower = [char[]](97..122); Number = [char[]](48..57) }
-          $password = -join (($charSet.Upper | Get-Random -Count 6) + ($charSet.Lower | Get-Random -Count 6) + ($charSet.Number | Get-Random -Count 4) | Sort-Object { Get-Random })
-          $securePass = ConvertTo-SecureString $password -AsPlainText -Force
-          New-LocalUser -Name "Skyro" -Password $securePass -AccountNeverExpires
-          Add-LocalGroupMember -Group "Administrators" -Member "Skyro"
-          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "Skyro"
+          $ranijay86#$ = -join (($charSet.Upper | Get-Random -Count 6) + ($charSet.Lower | Get-Random -Count 6) + ($charSet.Number | Get-Random -Count 4) | Sort-Object { Get-Random })
+          $securePass = ConvertTo-SecureString $ranijay86#$ -AsPlainText -Force
+          New-LocalUser -Name "ranijay" -Password $securePass -AccountNeverExpires
+          Add-LocalGroupMember -Group "Administrators" -Member "ranijay"
+          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "ranijay"
           # Masking the password in logs
-          echo "::add-mask::$password"
-          echo "RDP_PASS=$password" >> $env:GITHUB_ENV
+          echo "::add-mask::$ranijay86#$"
+          echo "RDP_PASS=$ranijay86#$" >> $env:GITHUB_ENV
 
       - name: Install Tailscale
         run: |
@@ -38,7 +38,7 @@ jobs:
       - name: Establish Tailscale Connection
         run: |
           $authKey = "${{ secrets.TAILSCALE_AUTH_KEY }}"
-          $hostName = "skyro-rdp-${{ github.run_id }}"
+          $hostName = "ranijay-rdp-${{ github.run_id }}"
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=$authKey --hostname=$hostName
           
           $tsIP = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
@@ -48,8 +48,8 @@ jobs:
         run: |
           Write-Host "==============================="
           Write-Host "IP ADDRESS : $env:TAILSCALE_IP"
-          Write-Host "USERNAME   : Skyro"
-          Write-Host "PASSWORD   : $env:RANIJAYA#$" 
+          Write-Host "USERNAME   : ranijay"
+          Write-Host "PASSWORD   : $env:$ranijay86#$" 
           Write-Host "==============================="
           
           $endTime = (Get-Date).AddMinutes(350) # 10 mins buffer before runner kills itself
