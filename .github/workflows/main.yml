@@ -49,7 +49,7 @@ jobs:
           Write-Host "==============================="
           Write-Host "IP ADDRESS : $env:TAILSCALE_IP"
           Write-Host "USERNAME   : Skyro"
-          Write-Host "PASSWORD   : $env:RDP_PASS" 
+          Write-Host "PASSWORD   : $(echo $env:RDP_CREDS)" 
           Write-Host "==============================="
           
           $endTime = (Get-Date).AddMinutes(350) # 10 mins buffer before runner kills itself
